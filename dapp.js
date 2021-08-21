@@ -18,8 +18,8 @@ DAppJS.loadWeb3 = async function(trigger){
             await continueLoading();
         }
         async function continueLoading(){
-            ethereum.on('accountsChanged', function(){window.dispatchEvent(new Event('accountsChanged'));});
-            ethereum.on('chainChanged', function(){window.dispatchEvent(new Event('chainChanged'));});
+            ethereum.on('accountsChanged', function(){window.dispatchEvent(new Event('web3accountsChanged'));});
+            ethereum.on('chainChanged', function(){window.dispatchEvent(new Event('web3chainChanged'));});
             ethereum.on('disconnect', function(){window.dispatchEvent(new Event('web3Disconnected'));});
             window.web3 = new Web3(window.ethereum);
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -36,7 +36,7 @@ DAppJS.loadWeb3 = async function(trigger){
         }
     } else {
         // handle no extension installed
-        window.dispatchEvent(new Event('noWeb3found'));
+        window.dispatchEvent(new Event('web3notFound'));
     }
 }
 
@@ -78,13 +78,17 @@ DAppJS.callContractFunction = async function(callOptions, contractAddress, ABI){
     DAppJS.contractCounter = DAppJS.contractCounter || 0;
     DAppJS.contractCounter++;
     DAppJS.contract = DAppJS.contract || [];
-    DAppJS.contract[DAppJS.contractCounter] = DAppJS.loadContract(window.web3.utils.toChecksumAddress(contractAddress), ABI);
+    try{
+        DAppJS.contract[DAppJS.contractCounter] = DAppJS.loadContract(window.web3.utils.toChecksumAddress(contractAddress), ABI);
+    } catch(e){
+        return success:false, result:e, resultType:typeof(e)};
+    }
     var functionBody = 'DAppJS.contract[DAppJS.contractCounter].methods.'+methodName+'('+parameters+').estimateGas({value: '+etherValue+',from: "'+DAppJS.actualAccount+'"});';
     var helper = new Function(functionBody);
     try{
         var callGasPrice = await eval(functionBody);
     } catch(e){
-        return {success:false, result:e};
+        return {success:false, result:e, resultType:typeof(e)};
     }
     var currentGasPrice = await window.web3.eth.getGasPrice();
     // add 10% buffer for gas price and gas calculation, in order to fund the transaction
@@ -120,9 +124,15 @@ DAppJS.callContractFunction = async function(callOptions, contractAddress, ABI){
             default:
                 console.error(e);
         }
-        var resultType="string";
-        return {success:false, result:e, resultType:resultType};
+        return {success:false, result:e, resultType:typeof(e)};
     }
+}
+
+DAppJS.addMethodToABI = function(originalABI, newABI){
+    if (typeof(newABI)=="string"){
+        newABI = JSON.parse(newABI);
+    }
+    originalABI.push(newABI);
 }
 
 DAppJS.signPass = async function(signer, parameters){
