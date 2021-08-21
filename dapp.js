@@ -2,29 +2,32 @@
 // works with metamask
 
 var DAppJS = {};
+DAppJS.web3loaded = false;
 
-DAppJS.loadWeb3 = function(trigger) {
+DAppJS.loadWeb3 = function(trigger){
 	if (window.ethereum) {
 		// listen to changes
         // load the script if it is not loaded yet
         if (typeof Web3 === "undefined"){
             var web3Loader = document.createElement('script');
             web3Loader.onload = continueLoading;
+            // load latest version dynamically
             web3Loader.src = 'https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js';
             document.head.appendChild(web3Loader);
         } else {
             continueLoading();
         }
+        DAppJS.web3loaded = true;
         function continueLoading(){
             ethereum.on('accountsChanged', function(){window.dispatchEvent(new Event('accountsChanged'));});
             ethereum.on('chainChanged', function(){window.dispatchEvent(new Event('chainChanged'));});
             ethereum.on('disconnect', function(){window.dispatchEvent(new Event('disconnect'));});
             window.web3 = new Web3(window.ethereum);
             web3.eth.getAccounts().then(function(accounts){
-                window.actualAccount = accounts[0];
-                if (window.actualAccount){
+                DAppJS.actualAccount = accounts[0];
+                if (DAppJS.actualAccount){
                     web3.eth.net.getNetworkType().then(function(networkType){
-                        window.actualChain = networkType;
+                        DAppJS.actualChain = networkType;
                         window.dispatchEvent(new Event('web3Connected'));
                     });
                 } else {
@@ -39,7 +42,12 @@ DAppJS.loadWeb3 = function(trigger) {
 }
 
 DAppJS.connect = function(){
-    window.ethereum.enable();
+    if (!DAppJS.web3loaded){
+        DAppJS.loadWeb3();
+        window.addEventListener('web3Connected', DAppJS.connect);
+    } else { 
+        window.ethereum.enable();
+    }
 }
 
 DAppJS.loadContract = function(address, ABI){
@@ -52,10 +60,14 @@ DAppJS.loadTextFile = async function(URI){
     return responseText;
 }
 
-DAppJS.signMessage = async function(signer, recipient, avatarIndex, _message, nonce){
-    var hash = web3.utils.soliditySha3(
-    {t: 'address', v: recipient}, {t: 'uint256', v:avatarIndex}, {t: 'string', v: _message}, {t: 'uint256', v: nonce}
-    ).toString("hex");
-    console.log(hash);
+DAppJS.signPass = async function(signer, parameters){
+    //recipient, avatarIndex, _message, nonce
+    // get the parameters dynamically
+    // {t: 'address', v: recipient}, {t: 'uint256', v:avatarIndex}, {t: 'string', v: _message}, {t: 'uint256', v: nonce}
+    if (parameters.trim()==''){
+        console.error('You need to pass a parameter string for the soliditySha3 function');
+        return;
+    }
+    var hash = web3.utils.soliditySha3(parameters).toString("hex");
     return await web3.eth.sign(hash, signer);
 }
