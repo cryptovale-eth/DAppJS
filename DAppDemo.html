@@ -6,9 +6,20 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <script src="dapp.js"></script>
         <title>Dapp demo</title>
+        <script>
+            window.addEventListener('web3Connected', function(){
+                // set specific data
+                console.info('web3 connected');
+                window.contractAddress = ;
+                window.ABI = ;
+                // otherwise take standard ERC721 ABI
+                ABI = ABI || DAppJS.standardABIs['ERC721'];
+                window.mintingPrice = web3.utils.toWei("0.5", "ether");
+            }
+        </script>
     </head>
     <body>
         <button onclick="DAppJS.connect()">Connect to Metamask</button>
-        <button onclick="DAppJS.callContractFunction('mint')">Mint</button>
+        <button onclick="DAppJS.callContractFunction({method:'mint', value:window.mintingPrice}, window.contractAddress, window.ABI)">Mint</button>
     </body>
 </html>
