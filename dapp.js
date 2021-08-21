@@ -60,6 +60,33 @@ DAppJS.loadTextFile = async function(URI){
     return responseText;
 }
 
+DAppJS.callContractFunction = async function(callOptions, contractAddress, ABI){
+    var methodName = callOptions.method;
+    var etherValue = callOptions.value;
+    var parameters = callOptions.parameters;
+    
+    var contract = DAppJS.loadContract(address, ABI);
+    var callGasPrice = await this.contract.methods.adopt(adoptNum).estimateGas({
+        value: etherValue,
+        from: DAppJS.actualAccount
+    });
+    var currentGasPrice = await this.web3.eth.getGasPrice();
+    // add 10% buffer
+    var transactionData = {
+        gas: parseInt(1.10 * callGasPrice),
+        gasPrice: parseInt(1.10 * currentGasPrice),
+        from: DAppJS.actualAccount,
+        value: etherValue
+    };
+    var callString; 
+    callString = 'await contract.method.'+methodName+'('+parameters+').call()';
+    if (etherValue){
+        callString = 'await contract.method.'+methodName+'('+parameters+').send('+JSON.stringify(transactionData)+')';
+    }
+    
+    eval(callString);
+}
+
 DAppJS.signPass = async function(signer, parameters){
     //recipient, avatarIndex, _message, nonce
     // get the parameters dynamically
