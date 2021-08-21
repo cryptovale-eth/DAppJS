@@ -23,6 +23,6 @@
     </head>
     <body>
         <button onclick="DAppJS.connect()">Connect to Metamask</button>
-        <button onclick="alert(await DAppJS.callContractFunction({method:'mint', parameters:'1', value:window.mintingPrice}, window.contractAddress, window.ABI))">Mint</button>
+        <button onclick="DAppJS.callContractFunction({method:'mint', parameters:'1', value:window.mintingPrice}, window.contractAddress, window.ABI)">Mint</button>
     </body>
 </html>
