@@ -6,7 +6,7 @@ DAppJS.web3loaded = false;
 
 DAppJS.loadWeb3 = async function(trigger){
 	if (window.ethereum) {
-		// listen to changes
+	// listen to changes
         // load the script if it is not loaded yet
         if (typeof Web3 === "undefined"){
             var web3Loader = document.createElement('script');
@@ -133,6 +133,20 @@ DAppJS.addMethodToABI = function(originalABI, newABI){
         newABI = JSON.parse(newABI);
     }
     originalABI.push(newABI);
+}
+
+DAppJS.loadContractABIFromEtherscan = async function(contractAddress){
+    try{
+        contractAddress = window.web3.utils.toChecksumAddress(contractAddress);
+    } catch(e){
+        return {success:false, result:e, resultType:typeof(e)};
+    }
+    var result = await (
+        window.fetch('https://api.etherscan.io/api?module=contract&action=getabi&address='+contractAddress).then(
+                result => result.json()
+            )
+        )
+    return JSON.parse(result.result); 
 }
 
 DAppJS.signPass = async function(signer, parameters){
