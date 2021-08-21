@@ -14,12 +14,15 @@
                 window.ABI = undefined;
                 // otherwise take standard ERC721 ABI
                 ABI = ABI || DAppJS.standardABIs['ERC721'];
+                // add the mint method to the ABI, as it is mostly custom to every project
+                var newABI = '{"inputs":[{"internalType":"uint256","name":"numberOfTokens","type":"uint256"}],"name":"mint","outputs":[],"stateMutability":"payable","type":"function"}';
+                DAppJS.addMethodToABI(DAppJS.standardABIs['ERC721'], newABI);
                 window.mintingPrice = web3.utils.toWei("0.5", "ether");
             });
         </script>
     </head>
     <body>
         <button onclick="DAppJS.connect()">Connect to Metamask</button>
-        <button onclick="DAppJS.callContractFunction({method:'mint', value:window.mintingPrice}, window.contractAddress, window.ABI)">Mint</button>
+        <button onclick="alert(await DAppJS.callContractFunction({method:'mint', parameters:'1', value:window.mintingPrice}, window.contractAddress, window.ABI))">Mint</button>
     </body>
 </html>
