@@ -18,8 +18,8 @@ DAppJS.loadWeb3 = async function(trigger){
             await continueLoading();
         }
         async function continueLoading(){
-            ethereum.on('accountsChanged', function(){window.dispatchEvent(new Event('web3accountsChanged'));});
-            ethereum.on('chainChanged', function(){window.dispatchEvent(new Event('web3chainChanged'));});
+            ethereum.on('accountsChanged', function(){window.dispatchEvent(new Event('web3AccountsChanged'));});
+            ethereum.on('chainChanged', function(){window.dispatchEvent(new Event('web3ChainChanged'));});
             ethereum.on('disconnect', function(){window.dispatchEvent(new Event('web3Disconnected'));});
             window.web3 = new Web3(window.ethereum);
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -36,7 +36,7 @@ DAppJS.loadWeb3 = async function(trigger){
         }
     } else {
         // handle no extension installed
-        window.dispatchEvent(new Event('web3notFound'));
+        window.dispatchEvent(new Event('web3NotFound'));
     }
 }
 
