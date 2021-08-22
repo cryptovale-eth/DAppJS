@@ -6,7 +6,7 @@ DAppJS.web3loaded = false;
 
 DAppJS.loadWeb3 = async function(trigger){
 	if (window.ethereum) {
-	// listen to changes
+		// listen to changes
         // load the script if it is not loaded yet
         if (typeof Web3 === "undefined"){
             var web3Loader = document.createElement('script');
@@ -81,7 +81,7 @@ DAppJS.callContractFunction = async function(callOptions, contractAddress, ABI){
     try{
         DAppJS.contract[DAppJS.contractCounter] = DAppJS.loadContract(window.web3.utils.toChecksumAddress(contractAddress), ABI);
     } catch(e){
-        return success:false, result:e, resultType:typeof(e)};
+        return {success:false, result:e, resultType:typeof(e)};
     }
     var functionBody = 'DAppJS.contract[DAppJS.contractCounter].methods.'+methodName+'('+parameters+').estimateGas({value: '+etherValue+',from: "'+DAppJS.actualAccount+'"});';
     var helper = new Function(functionBody);
