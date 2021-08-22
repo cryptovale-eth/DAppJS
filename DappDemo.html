@@ -33,10 +33,12 @@
                 document.getElementById('message').innerHTML = "Disconnected";
                 document.getElementById('mintingButton').setAttribute('disabled', 'true');
                 document.getElementById('connectButton').removeAttribute('disabled');
-
             }));
             window.addEventListener('notEnoughFunds', function(){
                 document.getElementById('message').innerHTML = "Not enough funds to perform this transaction";
+            });
+            window.addEventListener('web3ConnectionPending', function(){
+                document.getElementById('message').innerHTML = "Trying to connect to wallet...";
             });
         </script>
     </head>
