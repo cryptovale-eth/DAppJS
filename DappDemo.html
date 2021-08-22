@@ -43,7 +43,7 @@
                 <h1 align="center">This is an example DApp that uses DAppJS to connect via Metamask and call Smart Contract functions</h1>
                 <hr>
                 <form>
-                <button if="connectButton" onclick="DAppJS.connect()">Connect to Metamask</button>
+                <button id="connectButton" onclick="DAppJS.connect()">Connect to Metamask</button>
                 <div id="message"></div>
                 <button disabled id="mintingButton" onclick="DAppJS.callContractFunction({method:'mint', parameters:'1', value:window.mintingPrice}, window.contractAddress, window.ABI)">Mint</button>
                 </form>
