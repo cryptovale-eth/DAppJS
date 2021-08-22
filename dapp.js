@@ -22,10 +22,11 @@ DAppJS.loadWeb3 = async function(trigger){
             ethereum.on('accountsChanged', function(){window.dispatchEvent(new Event('web3AccountsChanged'));});
             ethereum.on('chainChanged', function(){window.dispatchEvent(new Event('web3ChainChanged'));});
             ethereum.on('disconnect', function(){window.dispatchEvent(new Event('web3Disconnected'));});
-            window.addEventListener('web3Disconnected', function(){
+            ['web3AccountsChanged', 'web3Disconnected'].forEach( ev => window.addEventListener(ev, function(){
                 DAppJS.web3connected = false;
-            });
+            }));
             window.web3 = new Web3(window.ethereum);
+            await DAppJS.connectWallet();
         }
     } else {
         // handle no extension installed
@@ -34,15 +35,22 @@ DAppJS.loadWeb3 = async function(trigger){
 }
 
 DAppJS.connect = async function(){
+    // not loaded at all
     if (!DAppJS.web3loaded){
         await DAppJS.loadWeb3();
+    } else {
+        if (!DAppJS.web3connected){
+            await DAppJS.connectWallet();
+        }
     }
-    if (!DAppJS.web3connected){
-        DAppJS.connectWallet();
-    }
+    // loaded but not connected
+    if ((DAppJS.web3loaded)&&(!DAppJS.web3connected)){
+        await DAppJS.connectWallet();
+    }    
 }
 
-DAppJS.connectWallet=  function(){
+DAppJS.connectWallet= async function(){
+    window.dispatchEvent(new Event('web3ConnectionPending'));
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     DAppJS.actualAccount = window.web3.utils.toChecksumAddress(accounts[0]);
     if (DAppJS.actualAccount){
