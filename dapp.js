@@ -84,6 +84,7 @@ DAppJS.callContractFunction = async function(callOptions, contractAddress, ABI){
     try{
         var callGasPrice = await eval(functionBody);
     } catch(e){
+        handleErrors(e);
         return {success:false, result:e, resultType:typeof(e)};
     }
     var currentGasPrice = await window.web3.eth.getGasPrice();
@@ -113,6 +114,11 @@ DAppJS.callContractFunction = async function(callOptions, contractAddress, ABI){
         return {success:true, result:callContractFunctionResult, resultType:resultType};
     } catch(e){
         // if an error has occurred, return it
+        handleErrors(e);
+        return {success:false, result:e, resultType:typeof(e)};
+    }
+    
+    function handleErrors(e){
         switch(e.code){
             case -32000:
                 window.dispatchEvent(new Event('notEnoughFunds'));
@@ -120,7 +126,6 @@ DAppJS.callContractFunction = async function(callOptions, contractAddress, ABI){
             default:
                 console.error(e);
         }
-        return {success:false, result:e, resultType:typeof(e)};
     }
 }
 
