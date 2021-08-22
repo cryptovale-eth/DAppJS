@@ -4,10 +4,11 @@
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://unpkg.com/mvp.css">
         <script>
             var Loader = document.createElement('script');
             // load latest version dynamically
-            Loader.src = 'https://cdn.jsdelivr.net/gh/cryptovale-eth/DAppJS@main/dapp.js?' + (Math.random()*1000 * Math.random() + (new Date()).getTime());
+            Loader.src = 'https://cdn.jsdelivr.net/gh/cryptovale-eth/DAppJS@latest/dapp.js?' + (Math.random()*1000 * Math.random() + (new Date()).getTime());
             document.head.appendChild(Loader);
         </script>
         <title>Dapp demo</title>
