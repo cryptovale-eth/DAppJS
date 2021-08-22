@@ -24,6 +24,16 @@
                 var newABI = '{"inputs":[{"internalType":"uint256","name":"numberOfTokens","type":"uint256"}],"name":"mint","outputs":[],"stateMutability":"payable","type":"function"}';
                 DAppJS.addMethodToABI(DAppJS.standardABIs['ERC721'], newABI);
                 window.mintingPrice = web3.utils.toWei("0.5", "ether");
+                document.getElementById('message').innerHTML = "Connected to " + DAppJS.chain + " with account "+DAppJS.actualAccount;
+                document.getElementById('mintingButton').removeAttribute('disabled');
+                document.getElementById('connectButton').setAttribute('disabled', 'true');
+
+            });
+            window.addEventListener('web3Disconnected', function(){
+                document.getElementById('message').innerHTML = "Disconnected";
+                document.getElementById('mintingButton').setAttribute('disabled', 'true');
+                document.getElementById('connectButton').removeAttribute('disabled');
+
             });
         </script>
     </head>
@@ -33,8 +43,9 @@
                 <h1 align="center">This is an example DApp that uses DAppJS to connect via Metamask and call Smart Contract functions</h1>
                 <hr>
                 <form>
-                <button onclick="DAppJS.connect()">Connect to Metamask</button>
-                <button onclick="DAppJS.callContractFunction({method:'mint', parameters:'1', value:window.mintingPrice}, window.contractAddress, window.ABI)">Mint</button>
+                <button if="connectButton" onclick="DAppJS.connect()">Connect to Metamask</button>
+                <div id="message"></div>
+                <button disabled id="mintingButton" onclick="DAppJS.callContractFunction({method:'mint', parameters:'1', value:window.mintingPrice}, window.contractAddress, window.ABI)">Mint</button>
                 </form>
                 <hr>
                 <div><a href="https://github.com/cryptovale-eth/DAppJS">Check it out on GitHub</a></div>
