@@ -12,7 +12,7 @@ DAppJS.loadWeb3 = async function(trigger){
             var web3Loader = document.createElement('script');
             web3Loader.onload = continueLoading;
             // load latest version dynamically
-            web3Loader.src = 'https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js'; //?' + (new Date()).getTime();
+            web3Loader.src = 'https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js?' + (new Date()).getTime();
             document.head.appendChild(web3Loader);
         } else {
             await continueLoading();
@@ -43,13 +43,9 @@ DAppJS.loadWeb3 = async function(trigger){
 DAppJS.connect = function(){
     if (!DAppJS.web3loaded){
         DAppJS.loadWeb3();
-        window.addEventListener('web3Connected', DAppJS.connect);
         window.addEventListener('web3Disconnected', function(){
             DAppJS.web3loaded = false;
-            DAppJS.connect();
         });
-    } else { 
-        //window.ethereum.enable();
     }
 }
 
