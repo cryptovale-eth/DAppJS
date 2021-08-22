@@ -28,7 +28,17 @@
         </script>
     </head>
     <body>
-        <button onclick="DAppJS.connect()">Connect to Metamask</button>
-        <button onclick="DAppJS.callContractFunction({method:'mint', parameters:'1', value:window.mintingPrice}, window.contractAddress, window.ABI)">Mint</button>
+        <main>
+            <section align="center">
+                <h1 align="center">This is an example DApp that uses DAppJS to connect via Metamask and call Smart Contract functions</h1>
+                <hr>
+                <form>
+                <button onclick="DAppJS.connect()">Connect to Metamask</button>
+                <button onclick="DAppJS.callContractFunction({method:'mint', parameters:'1', value:window.mintingPrice}, window.contractAddress, window.ABI)">Mint</button>
+                </form>
+                <hr>
+                <div><a href="https://github.com/cryptovale-eth/DAppJS">Check it out on GitHub</a></div>
+            </section>
+        </main>
     </body>
 </html>
