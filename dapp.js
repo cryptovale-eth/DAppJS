@@ -6,7 +6,7 @@ DAppJS.web3loaded = false;
 
 DAppJS.loadWeb3 = async function(trigger){
 	if (window.ethereum) {
-		// listen to changes
+        // listen to changes
         // load the script if it is not loaded yet
         if (typeof Web3 === "undefined"){
             var web3Loader = document.createElement('script');
