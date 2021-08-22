@@ -35,12 +35,16 @@
                 document.getElementById('connectButton').removeAttribute('disabled');
 
             });
+            window.addEventListener('notEnoughFunds', function(){
+                document.getElementById('message').innerHTML = "Not enough funds to perform this transaction";
+            });
         </script>
     </head>
     <body>
         <main>
             <section align="center">
                 <h1 align="center">This is an example DApp that uses DAppJS to connect via Metamask and call Smart Contract functions</h1>
+                <h2>Don't try this with real funds!</h2>
                 <hr>
                 <button id="connectButton" onclick="DAppJS.connect()">Connect to Metamask</button>
                 <br><div id="message"></div><br>
