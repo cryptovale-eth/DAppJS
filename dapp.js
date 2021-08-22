@@ -12,7 +12,7 @@ DAppJS.loadWeb3 = async function(trigger){
             var web3Loader = document.createElement('script');
             web3Loader.onload = continueLoading;
             // load latest version dynamically
-            web3Loader.src = 'https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js?' + (new Date()).getTime();
+            web3Loader.src = 'https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js'; //?' + (new Date()).getTime();
             document.head.appendChild(web3Loader);
         } else {
             await continueLoading();
