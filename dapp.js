@@ -18,21 +18,14 @@ DAppJS.loadWeb3 = async function(trigger){
             await continueLoading();
         }
         async function continueLoading(){
+            DAppJS.web3loaded = true;
             ethereum.on('accountsChanged', function(){window.dispatchEvent(new Event('web3AccountsChanged'));});
             ethereum.on('chainChanged', function(){window.dispatchEvent(new Event('web3ChainChanged'));});
             ethereum.on('disconnect', function(){window.dispatchEvent(new Event('web3Disconnected'));});
+            window.addEventListener('web3Disconnected', function(){
+                DAppJS.web3connected = false;
+            });
             window.web3 = new Web3(window.ethereum);
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            DAppJS.actualAccount = window.web3.utils.toChecksumAddress(accounts[0]);
-            if (DAppJS.actualAccount){
-                web3.eth.net.getNetworkType().then(function(networkType){
-                    DAppJS.actualChain = networkType;
-                    window.dispatchEvent(new Event('web3Connected'));
-                    DAppJS.web3loaded = true;
-                });
-            } else {
-                window.dispatchEvent(new Event('web3NotConnected'));
-            }        
         }
     } else {
         // handle no extension installed
@@ -40,13 +33,27 @@ DAppJS.loadWeb3 = async function(trigger){
     }
 }
 
-DAppJS.connect = function(){
+DAppJS.connect = async function(){
     if (!DAppJS.web3loaded){
-        DAppJS.loadWeb3();
-        window.addEventListener('web3Disconnected', function(){
-            DAppJS.web3loaded = false;
-        });
+        await DAppJS.loadWeb3();
     }
+    if (!DAppJS.web3connected){
+        DAppJS.connectWallet();
+    }
+}
+
+DAppJS.connectWallet=  function(){
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    DAppJS.actualAccount = window.web3.utils.toChecksumAddress(accounts[0]);
+    if (DAppJS.actualAccount){
+        web3.eth.net.getNetworkType().then(function(networkType){
+            DAppJS.actualChain = networkType;
+            window.dispatchEvent(new Event('web3Connected'));
+            DAppJS.web3connected = true;
+        });
+    } else {
+        window.dispatchEvent(new Event('web3NotConnected'));
+    }        
 }
 
 DAppJS.loadContract = function(contractAddress, ABI){
