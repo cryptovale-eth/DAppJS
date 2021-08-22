@@ -8,7 +8,7 @@
         <script>
             var Loader = document.createElement('script');
             // load latest version dynamically
-            Loader.src = 'https://cdn.jsdelivr.net/gh/cryptovale-eth/DAppJS@latest/dapp.js?' + (Math.random()*1000 * Math.random() + (new Date()).getTime());
+            Loader.src = 'https://cdn.jsdelivr.net/gh/cryptovale-eth/DAppJS@latest/dapp.js?' + (new Date()).getTime();
             document.head.appendChild(Loader);
         </script>
         <title>Dapp demo</title>
