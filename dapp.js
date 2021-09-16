@@ -165,7 +165,7 @@ DAppJS.loadContractABIFromEtherscan = async function(contractAddress){
     return JSON.parse(result.result); 
 }
 
-DAppJS.signPass = async function(signer, parameters){
+DAppJS.signMessage = async function(signerAddress, parameters){
     //recipient, avatarIndex, _message, nonce
     // get the parameters dynamically
     // {t: 'address', v: recipient}, {t: 'uint256', v:avatarIndex}, {t: 'string', v: _message}, {t: 'uint256', v: nonce}
@@ -174,7 +174,7 @@ DAppJS.signPass = async function(signer, parameters){
         return;
     }
     var hash = web3.utils.soliditySha3(parameters).toString("hex");
-    return await web3.eth.sign(hash, signer);
+    return await web3.eth.sign(hash, signerAddress);
 }
 
 DAppJS.standardABIs = [];
