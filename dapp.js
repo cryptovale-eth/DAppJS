@@ -173,8 +173,9 @@ DAppJS.signMessage = async function(signerAddress, parameters){
         console.error('You need to pass a parameter string for the soliditySha3 function');
         return;
     }
-    var hash = web3.utils.soliditySha3(parameters).toString("hex");
-    return await web3.eth.sign(hash, signerAddress);
+    var call = 'web3.utils.encodePacked('+parameters+')';
+    var encodedParams = eval(call);
+    return await web3.eth.personal.sign(web3.utils.utf8ToHex(encodedParams), signerAddress);
 }
 
 DAppJS.signMessagePK = async function(parameters, privateKey){
@@ -185,7 +186,6 @@ DAppJS.signMessagePK = async function(parameters, privateKey){
         console.error('You need to pass a parameter string');
         return;
     }
-    var hash = web3.utils.soliditySha3(parameters).toString("hex");
     var call = 'web3.utils.encodePacked('+parameters+')';
     var encodedParams = eval(call);
     return await web3.eth.accounts.sign(web3.utils.keccak256(encodedParams), privateKey);
