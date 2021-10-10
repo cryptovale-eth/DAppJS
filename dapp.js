@@ -97,16 +97,16 @@ DAppJS.callContractFunction = async function(callOptions, contractAddress, ABI){
     var functionBody = 'DAppJS.contract[DAppJS.contractCounter].methods.'+methodName+'('+parameters+').estimateGas({value: '+etherValue+',from: "'+DAppJS.actualAccount+'"});';
     var helper = new Function(functionBody);
     try{
-        var callGasPrice = await eval(functionBody);
+        var callGas = await eval(functionBody);
     } catch(e){
         handleErrors(e);
         return {success:false, result:e, resultType:typeof(e)};
     }
     var currentGasPrice = await window.web3.eth.getGasPrice();
-    // add 10% buffer for gas price and gas calculation, in order to fund the transaction
+    // add 20% buffer for gas calculation, in order to fund the transaction
     var transactionData = {
-        gas: parseInt(1.10 * callGasPrice),
-        gasPrice: parseInt(1.10 * currentGasPrice),
+        gas: parseInt(1.20 * callGas),
+        gasPrice: parseInt(currentGasPrice),
         from: DAppJS.actualAccount,
         value: etherValue
     };
