@@ -138,6 +138,8 @@ DAppJS.callContractFunction = async function(callOptions, contractAddress, ABI){
             case -32000:
                 window.dispatchEvent(new Event('notEnoughFunds'));
                 break;
+            case -32002:
+		window.dispatchEvent(new Event('waitingForConnection'));
             default:
                 console.error(e);
         }
