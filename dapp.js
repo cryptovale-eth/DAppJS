@@ -43,10 +43,8 @@ DAppJS.connect = async function(){
             await DAppJS.connectWallet();
         }
     }
-    // loaded but not connected
-    if ((DAppJS.web3loaded)&&(!DAppJS.web3connected)){
-        await DAppJS.connectWallet();
-    }    
+    // loaded, let's connect or refresh
+    await DAppJS.connectWallet();    
 }
 
 DAppJS.connectWallet= async function(){
