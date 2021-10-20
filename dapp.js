@@ -4,29 +4,18 @@
 var DAppJS = {};
 DAppJS.web3loaded = false;
 
-DAppJS.loadWeb3 = async function(trigger){
-	if (window.ethereum) {
+DAppJS.loadWeb3 = async function (forceLoadWeb3) {
+    if (window.ethereum) {
         // listen to changes
         // load the script if it is not loaded yet
-        if (typeof Web3 === "undefined"){
+        if ((typeof Web3 === "undefined") || forceLoadWeb3) {
             var web3Loader = document.createElement('script');
-            web3Loader.onload = continueLoading;
+            web3Loader.onload = DAppJS.prepareConnection;
             // load latest version dynamically
             web3Loader.src = 'https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js?' + (new Date()).getTime();
             document.head.appendChild(web3Loader);
         } else {
-            await continueLoading();
-        }
-        async function continueLoading(){
-            DAppJS.web3loaded = true;
-            ethereum.on('accountsChanged', function(){window.dispatchEvent(new Event('web3AccountsChanged'));});
-            ethereum.on('chainChanged', function(){window.dispatchEvent(new Event('web3ChainChanged'));});
-            ethereum.on('disconnect', function(){window.dispatchEvent(new Event('web3Disconnected'));});
-            ['web3AccountsChanged', 'web3Disconnected'].forEach( ev => window.addEventListener(ev, function(){
-                DAppJS.web3connected = false;
-            }));
-            window.web3 = new Web3(window.ethereum);
-            await DAppJS.connectWallet();
+            await DAppJS.prepareConnection();
         }
     } else {
         // handle no extension installed
@@ -34,157 +23,286 @@ DAppJS.loadWeb3 = async function(trigger){
     }
 }
 
-DAppJS.connect = async function(){
+DAppJS.isConnected = function () {
+    return window.web3.currentProvider.isConnected();
+}
+
+DAppJS.prepareConnection = async function () {
+    DAppJS.web3loaded = true;
+    ethereum.on('accountsChanged', function () { window.dispatchEvent(new Event('web3AccountsChanged')); DAppJS.connectWallet(); });
+    ethereum.on('chainChanged', function () { window.dispatchEvent(new Event('web3ChainChanged')); });
+    ethereum.on('disconnect', function () { window.dispatchEvent(new Event('web3Disconnected')); });
+    ethereum.on('connect', function () { window.dispatchEvent(new Event('web3Connected')); });
+    ethereum.on('message', function (message) { window.dispatchEvent(new Event('web3Message', { 'detail': message })); });
+    ['web3AccountsChanged', 'web3Disconnected'].forEach(ev => window.addEventListener(ev, function () {
+        DAppJS.web3connected = false;
+    }));
+    window.web3 = new Web3(window.ethereum);
+}
+
+DAppJS.subscribe = async function (contractAddress, eventName) {
+
+}
+
+DAppJS.connect = async function (forceLoadWeb3) {
     // not loaded at all
-    if (!DAppJS.web3loaded){
-        await DAppJS.loadWeb3();
+    if (!DAppJS.web3loaded) {
+        await DAppJS.loadWeb3(forceLoadWeb3);
+        await DAppJS.connectWallet();
     } else {
         await DAppJS.connectWallet();
-    } 
+    }
 }
 
-DAppJS.connectWallet= async function(){
+DAppJS.connectWallet = async function () {
     window.dispatchEvent(new Event('web3ConnectionPending'));
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    DAppJS.actualAccount = window.web3.utils.toChecksumAddress(accounts[0]);
-    if (DAppJS.actualAccount){
-        web3.eth.net.getNetworkType().then(function(networkType){
+    try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        DAppJS.actualAccount = window.web3.utils.toChecksumAddress(accounts[0]);
+        if (DAppJS.actualAccount) {
+            var networkType = await web3.eth.net.getNetworkType();
             DAppJS.actualChain = networkType;
-            window.dispatchEvent(new Event('web3Connected'));
+            window.dispatchEvent(new Event('web3ConnectionReady'));
             DAppJS.web3connected = true;
-        });
-    } else {
-        window.dispatchEvent(new Event('web3NotConnected'));
-    }        
+        } else {
+            window.dispatchEvent(new Event('web3NotConnected'));
+        }
+    } catch (e) {
+        DAppJS.handleErrors(e);
+        return e;
+    }
 }
 
-DAppJS.loadContract = function(contractAddress, ABI){
-	return new window.web3.eth.Contract(ABI, window.web3.utils.toChecksumAddress(contractAddress));
+DAppJS.loadContract = function (contractAddress, ABI) {
+    DAppJS.contract = DAppJS.contract || [];
+    try {
+        DAppJS.contract[contractAddress.toString()] = new window.web3.eth.Contract(ABI, window.web3.utils.toChecksumAddress(contractAddress));
+    } catch (e) {
+        return { success: false, result: e, resultType: typeof (e) };
+    }
+    return DAppJS.contract[window.web3.utils.toChecksumAddress(contractAddress)];
 }
 
-DAppJS.loadTextFile = async function(URI){
-    var response = await window.fetch(URI);
+DAppJS.loadTextFile = async function (URI) {
+    var response = await window.fetch(URI, { cache: "no-store" });
     var responseText = await response.text();
     return responseText;
 }
 
-DAppJS.callContractFunction = async function(callOptions, contractAddress, ABI){
+DAppJS.loadABI = function (_ABI) {
     // check if ABI passed is a string, then check if we have it
-    if (typeof(ABI)==="string"){
-        if (typeof(DAppJS.standardABIs[ABI.toUpperCase()])=="undefined"){
-            return {success:false, result:"You didn't pass a valid ABI", resultType:"string"};
+    var ABI = _ABI;
+    if (typeof (_ABI) === "string") {
+        if (typeof (DAppJS.standardABIs[_ABI.toUpperCase()]) == "undefined") {
+            return { success: false, result: "You didn't pass a valid ABI", resultType: "string" };
         } else {
-            ABI = DAppJS.standardABIs[ABI.toUpperCase()];
+            ABI = DAppJS.standardABIs[_ABI.toUpperCase()];
         }
     }
+    return ABI;
+}
+
+DAppJS.getTokenImageURLFromIPFS = async function (contractAddress, tokenId, ABI) {
+    // always select a random IPFS gateway
+    var IPFSGateways = [];
+    IPFSGateways.push('https://ipfs.fleek.co/ipfs/');
+    //IPFSGateways.push('https://gateway.pinata.cloud/ipfs/');
+    IPFSGateways.push('https://cloudflare-ipfs.com/ipfs/');
+    IPFSGateways.push('https://infura-ipfs.io/ipfs/');
+    IPFSGateways.push('https://ipfs.1-2.dev/ipfs/');
+    IPFSGateway = IPFSGateways[Math.floor(Math.random() * IPFSGateways.length)];
+
+    var getTokenURI = await DAppJS.callContractFunction({ method: "tokenURI", parameters: '"' + tokenId + '"' }, contractAddress, ABI);
+    // fetch the tokenURIMetadata
+    var tokenURIMetadataResult = await fetch(IPFSGateway + (getTokenURI.result.replace('ipfs://', '')));
+    var tokenURIMetadata = await tokenURIMetadataResult.json();
+    return IPFSGateway + tokenURIMetadata.image.replace('ipfs://', '');
+}
+
+DAppJS.estimateContractFunctionGas = async function (callOptions, contractAddress, _ABI) {
+    var ABI = DAppJS.loadABI(_ABI);
     var methodName = callOptions.method;
     var etherValue = callOptions.value || 0;
     var parameters = callOptions.parameters;
-    DAppJS.contractCounter = DAppJS.contractCounter || 0;
-    DAppJS.contractCounter++;
-    DAppJS.contract = DAppJS.contract || [];
-    try{
-        DAppJS.contract[DAppJS.contractCounter] = DAppJS.loadContract(window.web3.utils.toChecksumAddress(contractAddress), ABI);
-    } catch(e){
-        return {success:false, result:e, resultType:typeof(e)};
-    }
-    var functionBody = 'DAppJS.contract[DAppJS.contractCounter].methods.'+methodName+'('+parameters+').estimateGas({value: '+etherValue+',from: "'+DAppJS.actualAccount+'"});';
-    var helper = new Function(functionBody);
-    try{
+    contractAddress = window.web3.utils.toChecksumAddress(contractAddress);
+    await DAppJS.loadContract(contractAddress, ABI);
+    var functionBody = 'DAppJS.contract["' + contractAddress + '"].methods.' + methodName + '(' + parameters + ').estimateGas({value: ' + etherValue + ',from: "' + DAppJS.actualAccount + '"});';
+    try {
         var callGas = await eval(functionBody);
-    } catch(e){
-        handleErrors(e);
-        return {success:false, result:e, resultType:typeof(e)};
+    } catch (e) {
+        DAppJS.handleErrors(e);
+        return { success: false, result: e, resultType: typeof (e) };
     }
     var currentGasPrice = await window.web3.eth.getGasPrice();
+    return { gas: callGas, gasPrice: currentGasPrice };
+}
+
+DAppJS.callContractFunction = async function (callOptions, contractAddress, _ABI, buffer, noGasEstimation) {
+    if (noGasEstimation == undefined) {
+        noGasEstimation = DAppJS.noGasEstimation;
+    }
+    var ABI = DAppJS.loadABI(_ABI);
+    var methodName = callOptions.method;
+    var etherValue = callOptions.value || 0;
+    var parameters = callOptions.parameters;
+    contractAddress = window.web3.utils.toChecksumAddress(contractAddress);
+    await DAppJS.loadContract(contractAddress, ABI);
+    if (buffer == undefined) {
+        buffer = 0.20;
+    }
+    var gasEstimation = await DAppJS.estimateContractFunctionGas(callOptions, contractAddress, ABI);
     // add 20% buffer for gas calculation, in order to fund the transaction
     var transactionData = {
-        gas: parseInt(1.20 * callGas),
-        gasPrice: parseInt(currentGasPrice),
+        gas: parseInt((1 + buffer) * gasEstimation.gas),
+        gasPrice: parseInt(gasEstimation.gasPrice),
         from: DAppJS.actualAccount,
         value: etherValue
     };
-    var callString; 
-    callString = 'DAppJS.contract[DAppJS.contractCounter].methods.'+methodName+'('+parameters+').call()';
-    if (etherValue){
-        callString = 'DAppJS.contract[DAppJS.contractCounter].methods.'+methodName+'('+parameters+').send('+JSON.stringify(transactionData)+')';
+    var callString;
+    callString = 'DAppJS.contract["' + contractAddress + '"].methods.' + methodName + '(' + parameters + ').call()';
+    if (etherValue) {
+        if (noGasEstimation) {
+            callString = 'DAppJS.contract["' + contractAddress + '"].methods.' + methodName + '(' + parameters + ').send({value: ' + etherValue + ',from: "' + DAppJS.actualAccount + '"  })';
+        } else {
+            callString = 'DAppJS.contract["' + contractAddress + '"].methods.' + methodName + '(' + parameters + ').send({value: ' + etherValue + ',gas:' + transactionData.gas + ',from: "' + DAppJS.actualAccount + '"  })';
+        }
     }
-    try{
+    try {
         // make the call
         var callContractFunctionResult = await eval(callString);
         // get the type of result from the ABI
-        var methodCall = ABI.filter( el=> el.name == methodName);
+        var methodCall = ABI.filter(el => el.name == methodName);
         var resultType = "undefined";
-        if (methodCall.length >0){
-            if (methodCall[0].outputs.length>0){
+        if (methodCall.length > 0) {
+            if (methodCall[0].outputs.length > 0) {
                 resultType = methodCall[0].outputs[0].type || "undefined";
             }
         }
-        return {success:true, result:callContractFunctionResult, resultType:resultType};
-    } catch(e){
+        return { success: true, result: callContractFunctionResult, resultType: resultType };
+    } catch (e) {
         // if an error has occurred, return it
-        handleErrors(e);
-        return {success:false, result:e, resultType:typeof(e)};
-    }
-    
-    function handleErrors(e){
-        switch(e.code){
-            case -32000:
-                window.dispatchEvent(new Event('notEnoughFunds'));
-                break;
-            case -32002:
-		window.dispatchEvent(new Event('waitingForConnection'));
-            default:
-                console.error(e);
-        }
+        DAppJS.handleErrors(e);
+        return { success: false, result: e, resultType: typeof (e) };
     }
 }
 
-DAppJS.addMethodToABI = function(originalABI, newABI){
-    if (typeof(newABI)=="string"){
+DAppJS.handleErrors = function (e) {
+    switch (e.code) {
+        case -32000:
+            window.dispatchEvent(new Event('notEnoughFunds'));
+            break;
+        case -32002:
+            window.dispatchEvent(new Event('waitingForConnection'));
+            break;
+        case 4001:
+            window.dispatchEvent(new Event('requestRejected'));
+            break;
+        case -32603:
+            window.dispatchEvent(new Event('networkError'));
+        default:
+            console.error(e);
+    }
+}
+
+DAppJS.fromTimestamp = function (timestamp) {
+    return new Date(timestamp * 1000);
+}
+
+DAppJS.toTimestamp = function (date) {
+    return Math.floor(date.getTime() / 1000);
+}
+
+DAppJS.addMethodToABI = function (originalABI, newABI) {
+    if (typeof (newABI) == "string") {
         newABI = JSON.parse(newABI);
     }
     originalABI.push(newABI);
 }
 
-DAppJS.loadContractABIFromEtherscan = async function(contractAddress){
-    try{
+DAppJS.loadContractABIFromEtherscan = async function (contractAddress) {
+    try {
         contractAddress = window.web3.utils.toChecksumAddress(contractAddress);
-    } catch(e){
-        return {success:false, result:e, resultType:typeof(e)};
+    } catch (e) {
+        return { success: false, result: e, resultType: typeof (e) };
     }
     var result = await (
-        window.fetch('https://api.etherscan.io/api?module=contract&action=getabi&address='+contractAddress).then(
-                result => result.json()
-            )
+        window.fetch('https://api.etherscan.io/api?module=contract&action=getabi&address=' + contractAddress).then(
+            result => result.json()
         )
-    return JSON.parse(result.result); 
+    )
+    return JSON.parse(result.result);
 }
 
-DAppJS.signMessage = async function(signerAddress, parameters){
+DAppJS.prefixed = function (hash) {
+    return web3.utils.keccak256(web3.utils.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+}
+
+DAppJS.pack = function (data) {
+    return web3.utils.keccak256(web3.utils.encodePacked(data));
+}
+
+DAppJS.addSignatureCall = function () {
+    DAppJS.signatureCalls = DAppJS.signatureCalls || [];
+    DAppJS.signatureCalls[arguments[0]] = [];;
+    for (var i = 1; i < arguments.length; i++) {
+        DAppJS.signatureCalls[arguments[0]].push(arguments[i]);
+    }
+}
+
+DAppJS.signedCallToSha3 = function () {
+    var params = DAppJS.toSoliditySha3Parameters(arguments);
+    return DAppJS.toSoliditySha3(params);
+}
+
+
+DAppJS.toSoliditySha3 = function (paramArray) {
+    return web3.utils.soliditySha3.apply(null, paramArray);
+}
+
+DAppJS.toSoliditySha3Parameters = function () {
+    if (!DAppJS.signatureCalls) {
+        throw ("No signature calls defined");
+    }
+    if (typeof (arguments[0]) == "object") {
+        args = arguments[0];
+    } else {
+        args = arguments;
+    }
+    var sObject = [];
+    var index = 0;
+    DAppJS.signatureCalls[args[0]].forEach(paramDefinition => {
+        var singleObj = {};
+        singleObj.t = paramDefinition;
+        singleObj.v = args[1 + index];
+        sObject.push(singleObj);
+        index++;
+    });
+    return sObject;
+}
+
+DAppJS.signMessage = async function (signerAddress, parameters) {
     //recipient, avatarIndex, _message, nonce
     // get the parameters dynamically
     // {t: 'address', v: recipient}, {t: 'uint256', v:avatarIndex}, {t: 'string', v: _message}, {t: 'uint256', v: nonce}
-    if (parameters.trim()==''){
+    // bytes32 message = SignedMessages.prefixed(keccak256(abi.encodePacked(msg.sender, _tokenId, _setPrice, expirationTimestamp, _nonce)));
+    if (parameters.trim() == '') {
         console.error('You need to pass a parameter string for the soliditySha3 function');
         return;
     }
-    var call = 'web3.utils.encodePacked('+parameters+')';
-    var encodedParams = eval(call);
-    return await web3.eth.personal.sign(web3.utils.utf8ToHex(encodedParams), signerAddress);
+    return await web3.eth.personal.sign(parameters, signerAddress);
 }
 
-DAppJS.signMessagePK = async function(parameters, privateKey){
+
+DAppJS.signMessagePK = async function (parameters, privateKey) {
     //recipient, avatarIndex, _message, nonce
     // get the parameters dynamically
     // {t: 'address', v: recipient}, {t: 'uint256', v:avatarIndex}, {t: 'string', v: _message}, {t: 'uint256', v: nonce}
-    if (parameters.trim()==''){
+    // bytes32 message = SignedMessages.prefixed(keccak256(abi.encodePacked(msg.sender, _tokenId, _setPrice, expirationTimestamp, _nonce)));
+    if (parameters.trim() == '') {
         console.error('You need to pass a parameter string');
         return;
     }
-    var call = 'web3.utils.encodePacked('+parameters+')';
-    var encodedParams = eval(call);
-    return await web3.eth.accounts.sign(web3.utils.keccak256(encodedParams), privateKey);
+    return await web3.eth.accounts.sign(parameters, privateKey);
 }
 
 
