@@ -49,7 +49,9 @@ DAppJS.connect = async function (forceLoadWeb3) {
     // not loaded at all
     if (!DAppJS.web3loaded) {
         await DAppJS.loadWeb3(forceLoadWeb3);
-        await DAppJS.connectWallet();
+        window.addEventListener('web3Loaded', async function () {
+            await DAppJS.connectWallet();
+        });
     } else {
         await DAppJS.connectWallet();
     }
@@ -63,7 +65,7 @@ DAppJS.connectWallet = async function () {
         if (DAppJS.actualAccount) {
             var networkType = await web3.eth.net.getNetworkType();
             DAppJS.actualChain = networkType;
-            window.dispatchEvent(new Event('web3ConnectionReady'));
+            window.dispatchEvent(new Event('web3ConnectionReady')); 
             DAppJS.web3connected = true;
         } else {
             window.dispatchEvent(new Event('web3NotConnected'));
