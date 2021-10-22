@@ -38,6 +38,7 @@ DAppJS.prepareConnection = async function () {
         DAppJS.web3connected = false;
     }));
     window.web3 = new Web3(window.ethereum);
+    window.dispatchEvent(new Event('web3Loaded'));
 }
 
 DAppJS.subscribe = async function (contractAddress, eventName) {
@@ -76,7 +77,7 @@ DAppJS.connectWallet = async function () {
 DAppJS.loadContract = function (contractAddress, ABI) {
     DAppJS.contract = DAppJS.contract || [];
     try {
-        DAppJS.contract[contractAddress.toString()] = new window.web3.eth.Contract(ABI, window.web3.utils.toChecksumAddress(contractAddress));
+        DAppJS.contract[window.web3.utils.toChecksumAddress(contractAddress)] = new window.web3.eth.Contract(ABI, window.web3.utils.toChecksumAddress(contractAddress));
     } catch (e) {
         return { success: false, result: e, resultType: typeof (e) };
     }
@@ -134,37 +135,62 @@ DAppJS.estimateContractFunctionGas = async function (callOptions, contractAddres
         return { success: false, result: e, resultType: typeof (e) };
     }
     var currentGasPrice = await window.web3.eth.getGasPrice();
-    return { gas: callGas, gasPrice: currentGasPrice };
+    var result = { gas: callGas, gasPrice: currentGasPrice };
+    return { success: true, result: result, resultType: typeof (result) };
 }
 
-DAppJS.callContractFunction = async function (callOptions, contractAddress, _ABI, buffer, noGasEstimation) {
-    if (noGasEstimation == undefined) {
-        noGasEstimation = DAppJS.noGasEstimation;
+DAppJS.callContractFunction = async function (callOptions, contractAddress, _ABI, buffer, gasEstimationByProvider, gasEstimationFunction) {
+    if (gasEstimationByProvider == undefined) {
+        gasEstimationByProvider = DAppJS.gasEstimationByProvider;
     }
+    if (gasEstimationFunction == undefined) {
+        gasEstimationFunction = DAppJS.gasEstimationFunction;
+    }
+    if (gasEstimationFunction == undefined) {
+        gasEstimationFunction = async function () { var result = (await DAppJS.estimateContractFunctionGas(callOptions, contractAddress, ABI)).result; return result; };
+    }
+    if (buffer == undefined) {
+        buffer = DAppJS.gasBuffer;
+    }
+    if (buffer == undefined) {
+        // add 20% buffer for gas calculation, in order to fund the transaction
+        // this is only used if gasEstimationByProvider is false and no function is passed
+        buffer = 0.2;
+    }
+
     var ABI = DAppJS.loadABI(_ABI);
     var methodName = callOptions.method;
     var etherValue = callOptions.value || 0;
     var parameters = callOptions.parameters;
     contractAddress = window.web3.utils.toChecksumAddress(contractAddress);
     await DAppJS.loadContract(contractAddress, ABI);
-    if (buffer == undefined) {
-        buffer = 0.20;
+    var gasLimitCall = (await DAppJS.estimateContractFunctionGas(callOptions, contractAddress, ABI));
+    if (!gasLimitCall.success) {
+        console.error('callContractFunction error:', gasLimitCall.result.message);
+        return { success: false, result: gasLimitCall.result, resultType: typeof (gasLimitCall.result) };
     }
-    var gasEstimation = await DAppJS.estimateContractFunctionGas(callOptions, contractAddress, ABI);
-    // add 20% buffer for gas calculation, in order to fund the transaction
-    var transactionData = {
-        gas: parseInt((1 + buffer) * gasEstimation.gas),
-        gasPrice: parseInt(gasEstimation.gasPrice),
-        from: DAppJS.actualAccount,
-        value: etherValue
-    };
+    var gasLimit = parseInt(gasLimitCall.result.gas * (1 + buffer));
+    //var gasEstimation = await DAppJS.estimateContractFunctionGas(callOptions, contractAddress, ABI);
     var callString;
     callString = 'DAppJS.contract["' + contractAddress + '"].methods.' + methodName + '(' + parameters + ').call()';
-    if (etherValue) {
-        if (noGasEstimation) {
+    // check if the call changes state
+    if (DAppJS.changesState(methodName, ABI)){
+        if (gasEstimationByProvider) {
+            // let the web3 provider estimate gas
             callString = 'DAppJS.contract["' + contractAddress + '"].methods.' + methodName + '(' + parameters + ').send({value: ' + etherValue + ',from: "' + DAppJS.actualAccount + '"  })';
         } else {
-            callString = 'DAppJS.contract["' + contractAddress + '"].methods.' + methodName + '(' + parameters + ').send({value: ' + etherValue + ',gas:' + transactionData.gas + ',from: "' + DAppJS.actualAccount + '"  })';
+            var gas = await gasEstimationFunction();
+            // old type of gas estimation
+            if (gas.gas !== undefined) {
+                console.log('Type 1 legacy transaction');
+                callString = 'DAppJS.contract["' + contractAddress + '"].methods.' + methodName + '(' + parameters + ').send({value: ' + etherValue + ', gas:' + web3.utils.toBN((Math.round(gas.gas * (1 + buffer))).toString()) + ',gasPrice: ' + web3.utils.toBN(gas.gasPrice.toString()) + ', from: "' + DAppJS.actualAccount + '"  })';
+            } else {
+                console.log('Type 2 (EIP-1559) transaction');
+                var maxFeePerGas = gas.maxFeePerGas;
+                var maxPriorityFeePerGas = gas.maxPriorityFeePerGas;
+                var baseFee = gas.baseFee;
+                callString = 'DAppJS.contract["' + contractAddress + '"].methods.' + methodName + '(' + parameters + ').send({type:"0x2" ,value: ' + web3.utils.toBN(etherValue.toString()) + ',gasLimit:' + web3.utils.toBN(gasLimit.toString())+',maxFeePerGas:' + web3.utils.toBN(maxFeePerGas.toString()) + ',maxPriorityFeePerGas: ' + web3.utils.toBN(maxPriorityFeePerGas.toString()) + ',baseFee:' + baseFee + ', from: "' + DAppJS.actualAccount + '"  })';
+            }
         }
     }
     try {
@@ -186,20 +212,25 @@ DAppJS.callContractFunction = async function (callOptions, contractAddress, _ABI
     }
 }
 
+DAppJS.changesState = function (methodName, ABI) {
+    return ["pure", "view"].indexOf(ABI.filter(c => c.name == methodName)[0].stateMutability.toLowerCase()) == -1;
+}
+
 DAppJS.handleErrors = function (e) {
     switch (e.code) {
         case -32000:
-            window.dispatchEvent(new Event('notEnoughFunds'));
+            window.dispatchEvent(new Event('notEnoughFunds', { 'detail': e }));
             break;
         case -32002:
-            window.dispatchEvent(new Event('waitingForConnection'));
+            window.dispatchEvent(new Event('waitingForConnection', { 'detail': e }));
             break;
         case 4001:
-            window.dispatchEvent(new Event('requestRejected'));
+            window.dispatchEvent(new Event('requestRejected', { 'detail': e }));
             break;
         case -32603:
-            window.dispatchEvent(new Event('networkError'));
+            window.dispatchEvent(new Event('networkError', { 'detail': e }));
         default:
+            window.dispatchEvent(new Event('DAppJS generic error', { 'detail': e }));
             console.error(e);
     }
 }
