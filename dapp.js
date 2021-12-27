@@ -141,6 +141,16 @@ DAppJS.estimateContractFunctionGas = async function (callOptions, contractAddres
     return { success: true, result: result, resultType: typeof (result) };
 }
 
+DAppJS.sendEther = async function (to, amountInWei, data) {
+    try {
+        var call = await web3.eth.sendTransaction({ from: DAppJS.actualAccount, to: to, data: data, value: amountInWei });
+        return { success: true, result: call, resultType: "undefined" };
+    } catch (e) {
+        DAppJS.handleErrors(e);
+        return { success: false, result: e, resultType: typeof (e) };
+    }
+}
+
 DAppJS.callContractFunction = async function (callOptions, contractAddress, _ABI, buffer, gasEstimationByProvider, gasEstimationFunction) {
     if (gasEstimationByProvider == undefined) {
         gasEstimationByProvider = DAppJS.gasEstimationByProvider;
