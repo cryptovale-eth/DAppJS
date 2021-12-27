@@ -30,7 +30,7 @@ DAppJS.isConnected = function () {
 DAppJS.prepareConnection = async function () {
     DAppJS.web3loaded = true;
     ethereum.on('accountsChanged', function () { window.dispatchEvent(new Event('web3AccountsChanged')); DAppJS.connectWallet(); });
-    ethereum.on('chainChanged', function () { window.dispatchEvent(new Event('web3ChainChanged')); });
+    ethereum.on('chainChanged', function () { window.dispatchEvent(new Event('web3ChainChanged')); DAppJS.connectWallet(); });
     ethereum.on('disconnect', function () { window.dispatchEvent(new Event('web3Disconnected')); });
     ethereum.on('connect', function () { window.dispatchEvent(new Event('web3Connected')); });
     ethereum.on('message', function (message) { window.dispatchEvent(new Event('web3Message', { 'detail': message })); });
