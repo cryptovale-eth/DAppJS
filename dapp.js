@@ -4,6 +4,27 @@
 var DAppJS = {};
 DAppJS.web3loaded = false;
 
+DAppJS.getChainName = function(chainId){
+    let _chainNames = [];
+    _chainNames[137] = "polygon";
+    _chainNames[1] = "ethereum";
+    _chainNames[3] = "ropsten";
+    _chainNames[4] = "rinkeby";
+    _chainNames[5] = "goerli";
+    _chainNames[80001] = "mumbai";
+    _chainNames[56] = "binance smartchain";
+    _chainNames[137] = "polygon";
+
+    try{
+        let id = parseInt(chainId);
+        return _chainNames[id];
+    } catch(e){
+        console.error(e);
+        return undefined;
+    }
+}
+
+
 DAppJS.loadWeb3 = async function (forceLoadWeb3) {
     if (window.ethereum) {
         // listen to changes
@@ -65,6 +86,8 @@ DAppJS.connectWallet = async function () {
         if (DAppJS.actualAccount) {
             var networkType = await web3.eth.net.getNetworkType();
             DAppJS.actualChain = networkType;
+            DAppJS.chainId = window.web3.eth.currentProvider.chainId;
+            DAppJS.actualChainName = DAppJS.getChainName(DAppJS.chainId);
             window.dispatchEvent(new Event('web3ConnectionReady')); 
             DAppJS.web3connected = true;
         } else {
