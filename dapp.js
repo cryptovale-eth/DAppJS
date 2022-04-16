@@ -31,7 +31,7 @@ DAppJS.loadWeb3 = async function (forceLoadWeb3) {
         // load the script if it is not loaded yet
         if ((typeof Web3 === "undefined") || forceLoadWeb3) {
             var web3Loader = document.createElement('script');
-            web3Loader.onload = DAppJS.prepareConnection;
+            web3Loader.onload = function(){DAppJS.prepareConnection()};
             // load latest version dynamically
             web3Loader.src = 'https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js?' + (new Date()).getTime();
             document.head.appendChild(web3Loader);
@@ -58,7 +58,7 @@ DAppJS.prepareConnection = async function () {
     ['web3AccountsChanged', 'web3Disconnected'].forEach(ev => window.addEventListener(ev, function () {
         DAppJS.web3connected = false;
     }));
-    //window.web3 = new Web3(window.ethereum);
+    window.web3 = new Web3(window.ethereum);
     window.dispatchEvent(new Event('web3Loaded'));
 }
 
