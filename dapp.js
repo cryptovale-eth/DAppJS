@@ -58,7 +58,7 @@ DAppJS.prepareConnection = async function () {
     ['web3AccountsChanged', 'web3Disconnected'].forEach(ev => window.addEventListener(ev, function () {
         DAppJS.web3connected = false;
     }));
-    window.web3 = new Web3(window.ethereum);
+    //window.web3 = new Web3(window.ethereum);
     window.dispatchEvent(new Event('web3Loaded'));
 }
 
